@@ -264,6 +264,7 @@ body {
 }
 .icon-btn.edit { color: #0891b2; border-color: #a5f3fc; }
 .icon-btn.delete { color: #dc2626; border-color: #fecaca; }
+.icon-btn.foto { color: #7c3aed; border-color: #ddd6fe; }
 
 /* Export & Laporan */
 .export-section-header {

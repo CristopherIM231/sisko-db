@@ -328,10 +328,58 @@
         </div>
       </form>
     </div>
+</div>
+
+  <!-- ============ MODAL UPLOAD FOTO ============ -->
+  <div id="modalFoto" class="modal-overlay hidden">
+    <div class="modal-box" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3>Upload Foto Siswa</h3>
+        <button class="modal-close" id="closeModalFoto">&times;</button>
+      </div>
+
+      <form id="formFoto">
+        <input type="hidden" id="fotoNisn" value="">
+
+        <div class="form-field">
+          <label>Pilih Foto (JPG/PNG, maks 2MB)</label>
+          <input type="file" id="inputFoto" accept="image/jpeg,image/png" required>
+        </div>
+
+        <p id="formFotoError" class="login-error"></p>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-outline" id="cancelModalFoto">Batal</button>
+          <button type="submit" class="btn-primary">Upload</button>
+        </div>
+      </form>
+    </div>
   </div>
 
-  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<!-- ============ MODAL PREVIEW EXPORT ============ -->
+  <div id="modalPreview" class="modal-overlay hidden">
+    <div class="modal-box" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3 id="modalPreviewTitle">Preview Data</h3>
+        <button class="modal-close" id="closeModalPreview">&times;</button>
+      </div>
 
+      <div style="max-height: 400px; overflow-y: auto;">
+        <table class="data-table" id="tabelPreview">
+          <thead id="tabelPreviewHead"></thead>
+          <tbody id="tabelPreviewBody"></tbody>
+        </table>
+      </div>
+
+      <p id="previewInfo" style="margin-top: 12px; color: #6b7280; font-size: 13px;"></p>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-outline" id="cancelModalPreview">Batal</button>
+        <button type="button" class="btn-primary" id="btnDownloadFromPreview">Download Excel</button>
+      </div>
+    </div>
+  </div>
+  
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>
