@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistem Informasi Sekolah (SISKO DB)</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="icon" href="https://cdn-icons-png.flaticon.com/512/201/201614.png">
+</head>
+<body>
+
+  <!-- ============ HALAMAN LOGIN ============ -->
+  <div id="loginPage" class="login-page">
+    <div class="login-overlay"></div>
+    <div class="login-card">
+      <div class="login-logo">
+        <svg viewBox="0 0 24 24" width="36" height="36" fill="white">
+          <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zm0 13.5L4.5 12.5v3.79c0 .53.21 1.04.59 1.41C6.99 19.6 9.36 21 12 21s5.01-1.4 6.91-3.3c.38-.37.59-.88.59-1.41V12.5L12 16.5z"/>
+        </svg>
+      </div>
+      <h1 class="login-title">SISKO DB</h1>
+      <p class="login-subtitle">Sistem Informasi Database Akademik</p>
+
+      <form id="loginForm">
+        <div class="input-group">
+          <span class="input-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+          </span>
+          <input type="text" id="username" placeholder="Username" required autocomplete="username">
+        </div>
+        <div class="input-group">
+          <span class="input-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          </span>
+          <input type="password" id="password" placeholder="Password" required autocomplete="current-password">
+        </div>
+
+        <p id="loginError" class="login-error"></p>
+
+        <button type="submit" class="btn-masuk">
+          MASUK SISTEM
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </button>
+      </form>
+
+      <p class="login-footer">© 2026 School Database System. All Rights Reserved.</p>
+    </div>
+  </div>
+
+  <!-- ============ HALAMAN DASHBOARD (SPA) ============ -->
+  <div id="dashboardPage" class="dashboard hidden">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="#818cf8"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zm0 13.5L4.5 12.5v3.79c0 .53.21 1.04.59 1.41C6.99 19.6 9.36 21 12 21s5.01-1.4 6.91-3.3c.38-.37.59-.88.59-1.41V12.5L12 16.5z"/></svg>
+        <span>SISKO<b>DB</b></span>
+      </div>
+
+      <div class="sidebar-user">
+        <div class="avatar" id="userAvatar">U</div>
+        <div>
+          <div class="user-name" id="userName">Administrator Sistem</div>
+          <div class="user-role" id="userRole">ADMIN</div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">Menu Utama</div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-view="siswa">
+          <span class="nav-icon">🎓</span> Data Siswa
+        </a>
+        <a href="#" class="nav-item" data-view="guru" id="navGuru">
+          <span class="nav-icon">👥</span> Data Guru
+        </a>
+        <a href="#" class="nav-item" data-view="export" id="navExport">
+          <span class="nav-icon">📄</span> Export &amp; Laporan
+        </a>
+      </nav>
+
+      <div class="sidebar-section">Akun &amp; Sistem</div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item" id="logoutBtn">
+          <span class="nav-icon">🚪</span> Keluar Sistem
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Konten Utama -->
+    <main class="main-content">
+      <header class="topbar">
+        <button class="hamburger" id="hamburgerBtn">☰</button>
+        <div>
+          <h2>Dashboard Overview</h2>
+          <p>Selamat datang kembali di panel akademik</p>
+        </div>
+      </header>
+
+      <!-- VIEW: DATA SISWA -->
+      <section id="view-siswa" class="view">
+        <div class="view-header">
+          <div>
+            <h1>Data Siswa</h1>
+            <p>Kelola informasi akademik siswa</p>
+          </div>
+          <button class="btn-primary" id="btnTambahSiswa">+ Tambah Siswa</button>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-icon blue">👥</div>
+            <div class="stat-value" id="statTotalSiswa">0</div>
+            <div class="stat-label">Total Siswa</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon green">💻</div>
+            <div class="stat-value" id="statKelasAktif">0</div>
+            <div class="stat-label">Kelas Aktif</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon yellow">🎒</div>
+            <div class="stat-value" id="statJurusan">0</div>
+            <div class="stat-label">Jurusan</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon teal">📷</div>
+            <div class="stat-value" id="statFoto">0</div>
+            <div class="stat-label">Foto Lengkap</div>
+          </div>
+        </div>
+
+        <div class="filter-bar">
+          <div class="filter-field">
+            <label>☰ Tampil</label>
+            <select id="filterTampil">
+              <option value="10">10 Baris</option>
+              <option value="25">25 Baris</option>
+              <option value="50">50 Baris</option>
+            </select>
+          </div>
+          <div class="filter-field grow">
+            <label>🔍 Pencarian Pintar</label>
+            <input type="text" id="filterSearch" placeholder="Cari nama, NISN, alamat...">
+          </div>
+          <div class="filter-field">
+            <label>📚 Filter Kelas</label>
+            <select id="filterKelas"><option value="all">Semua Kelas</option></select>
+          </div>
+          <div class="filter-field">
+            <label>🎓 Filter Jurusan</label>
+            <select id="filterJurusan"><option value="all">Semua Jurusan</option></select>
+          </div>
+          <div class="filter-count" id="filterCount">0 Data Ditemukan</div>
+        </div>
+
+        <p class="filter-info" id="filterInfoText">Menampilkan 0 - 0 dari 0 data</p>
+
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nama</th><th>NISN</th><th>L/P</th><th>Kelas</th><th>Jurusan</th><th>No HP</th><th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tableSiswaBody">
+              <tr><td colspan="7" class="empty-row">Belum ada data</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- VIEW: DATA GURU -->
+      <section id="view-guru" class="view hidden">
+        <div class="view-header">
+          <div>
+            <h1>Data Guru</h1>
+            <p>Atur Guru, Mapel, dan Kelas Mengajar</p>
+          </div>
+          <button class="btn-primary" id="btnTambahGuru">+ Tambah Guru</button>
+        </div>
+
+        <div class="filter-bar">
+          <div class="filter-field">
+            <label>☰ Tampil</label>
+            <select id="filterTampilGuru">
+              <option value="10">10 Baris</option>
+              <option value="25">25 Baris</option>
+            </select>
+          </div>
+          <div class="filter-field grow">
+            <label>🔍 Cari Guru</label>
+            <input type="text" id="filterSearchGuru" placeholder="Cari NIP, Nama, atau Mapel...">
+          </div>
+          <div class="filter-count" id="filterCountGuru">0 Data Guru</div>
+        </div>
+
+        <p class="filter-info" id="filterInfoGuru">Menampilkan 0 - 0 dari 0 data</p>
+
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr><th>NIP</th><th>Nama Guru</th><th>Mata Pelajaran</th><th>Mengajar Kelas</th><th>Mengajar Jurusan</th><th>Aksi</th></tr>
+            </thead>
+            <tbody id="tableGuruBody">
+              <tr><td colspan="6" class="empty-row">Belum ada data</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- VIEW: EXPORT & LAPORAN -->
+      <section id="view-export" class="view hidden">
+        <div class="view-header">
+          <div>
+            <h1>Pusat Laporan</h1>
+            <p>Unduh data ke format PDF &amp; Excel</p>
+          </div>
+        </div>
+
+        <div class="export-section-header">
+          <div>
+            <h3>Dokumen Digital</h3>
+            <p>Generate laporan PDF dan Excel</p>
+          </div>
+          <button class="btn-dark" id="btnPengaturanKop">⚙ Pengaturan Kop &amp; TTD</button>
+        </div>
+
+        <div class="export-grid">
+          <div class="export-card">
+            <div class="export-icon blue">🎓</div>
+            <h3>Laporan Data Siswa</h3>
+            <p>Unduh rekapitulasi data siswa lengkap (Biodata, Ortu, Kontak) berdasarkan filter kelas dan jurusan.</p>
+
+            <label class="field-label">Filter Kelas</label>
+            <select id="exportFilterKelas"><option value="all">Semua Kelas</option></select>
+
+            <label class="field-label">Jurusan</label>
+            <select id="exportFilterJurusan"><option value="all">Semua Jurusan</option></select>
+
+            <div class="export-actions">
+              <button class="btn-outline" id="btnExportSiswaPdf">Unduh PDF</button>
+              <button class="btn-outline" id="btnExportSiswaExcel">Unduh Excel</button>
+            </div>
+          </div>
+
+          <div class="export-card">
+            <div class="export-icon yellow">👥</div>
+            <h3>Laporan Data Guru</h3>
+            <p>Unduh daftar lengkap guru beserta mata pelajaran, kelas, dan jurusan yang diampu.</p>
+            <div class="export-note">ℹ️ Laporan ini akan menampilkan seluruh data guru aktif yang terdaftar di sistem saat ini.</div>
+
+            <div class="export-actions">
+              <button class="btn-outline" id="btnExportGuruPdf">Unduh PDF</button>
+              <button class="btn-outline" id="btnExportGuruExcel">Unduh Excel</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+  <!-- ============ MODAL TAMBAH/EDIT SISWA ============ -->
+  <div id="modalSiswa" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modalSiswaTitle">Tambah Siswa Baru</h3>
+        <button class="modal-close" id="closeModalSiswa">&times;</button>
+      </div>
+
+      <form id="formSiswa">
+        <input type="hidden" id="siswaIdEdit" value="">
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Nama Lengkap</label>
+            <input type="text" id="inputNama" required>
+          </div>
+          <div class="form-field">
+            <label>NISN</label>
+            <input type="text" id="inputNisn" required>
+          </div>
+          <div class="form-field">
+            <label>Jenis Kelamin</label>
+            <select id="inputJk">
+              <option value="L">Laki-laki</option>
+              <option value="P">Perempuan</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Tanggal Lahir</label>
+            <input type="date" id="inputTglLahir">
+          </div>
+          <div class="form-field">
+            <label>Nama Ayah</label>
+            <input type="text" id="inputNamaAyah">
+          </div>
+          <div class="form-field">
+            <label>Nama Ibu</label>
+            <input type="text" id="inputNamaIbu">
+          </div>
+          <div class="form-field">
+            <label>No HP</label>
+            <input type="text" id="inputNoHp">
+          </div>
+          <div class="form-field">
+            <label>Kelas</label>
+            <input type="text" id="inputKelas" placeholder="Contoh: XII">
+          </div>
+          <div class="form-field">
+            <label>Jurusan</label>
+            <input type="text" id="inputJurusan" placeholder="Contoh: IPA 1">
+          </div>
+          <div class="form-field">
+            <label>Kode Pos</label>
+            <input type="text" id="inputKodePos">
+          </div>
+          <div class="form-field full-width">
+            <label>Alamat</label>
+            <textarea id="inputAlamat" rows="2"></textarea>
+          </div>
+        </div>
+
+        <p id="formSiswaError" class="login-error"></p>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-outline" id="cancelModalSiswa">Batal</button>
+          <button type="submit" class="btn-primary">Simpan Data</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
