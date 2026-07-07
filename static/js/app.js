@@ -65,6 +65,10 @@ navItems.forEach(function (item) {
     });
 
     document.querySelector('.sidebar').classList.remove('open');
+
+    if (target === 'guru') {
+      loadDataGuru();
+    }
   });
 });
 
@@ -411,4 +415,236 @@ document.getElementById('cancelModalPreview').addEventListener('click', function
 document.getElementById('btnDownloadFromPreview').addEventListener('click', function () {
   window.open(urlDownloadAktif, '_blank');
   modalPreview.classList.add('hidden');
+});
+// ---- MEMUAT DATA GURU DARI DATABASE ----
+async function loadDataGuru() {
+  try {
+    const response = await fetch('/api/guru');
+    const result = await response.json();
+
+    if (result.success) {
+      renderTabelGuru(result.data);
+    }
+  } catch (err) {
+    console.error('Gagal memuat data guru:', err);
+  }
+}
+
+// ---- MENAMPILKAN DATA GURU KE TABEL ----
+function renderTabelGuru(data) {
+  const tbody = document.getElementById('tableGuruBody');
+
+  if (data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-row">Belum ada data</td></tr>';
+    document.getElementById('filterCountGuru').textContent = '0 Data Guru';
+    document.getElementById('filterInfoGuru').textContent = 'Menampilkan 0 - 0 dari 0 data';
+    return;
+  }
+
+  tbody.innerHTML = data.map(function (g) {
+    return `
+      <tr>
+        <td>${g.nip}</td>
+        <td>${g.nama}</td>
+        <td>${g.mapel || '-'}</td>
+        <td>${g.kelas_ajar || '-'}</td>
+        <td>${g.jurusan_ajar || '-'}</td>
+        <td>
+          <button class="icon-btn edit" title="Edit" data-nip="${g.nip}">✏️</button>
+          <button class="icon-btn delete" title="Hapus" data-nip="${g.nip}">🗑️</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  document.getElementById('filterCountGuru').textContent = data.length + ' Data Guru';
+  document.getElementById('filterInfoGuru').textContent =
+    'Menampilkan 1 - ' + data.length + ' dari ' + data.length + ' data';
+
+  document.querySelectorAll('#tableGuruBody .icon-btn.edit').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      bukaModalEditGuru(btn.getAttribute('data-nip'), data);
+    });
+  });
+
+  document.querySelectorAll('#tableGuruBody .icon-btn.delete').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      hapusGuru(btn.getAttribute('data-nip'));
+    });
+  });
+}
+
+// ---- MODAL TAMBAH / EDIT GURU ----
+const modalGuru = document.getElementById('modalGuru');
+const formGuru = document.getElementById('formGuru');
+const formGuruError = document.getElementById('formGuruError');
+let nipEditAktif = '';   // menyimpan NIP yang sedang diedit (kosong = mode tambah)
+
+function bukaModalTambahGuru() {
+  document.getElementById('modalGuruTitle').textContent = 'Tambah Guru Baru';
+  formGuru.reset();
+  nipEditAktif = '';
+  document.getElementById('inputNip').disabled = false;
+  formGuruError.textContent = '';
+  modalGuru.classList.remove('hidden');
+}
+
+function bukaModalEditGuru(nip, semuaData) {
+  const guru = semuaData.find(function (g) { return g.nip === nip; });
+  if (!guru) return;
+
+  document.getElementById('modalGuruTitle').textContent = 'Edit Data Guru';
+  nipEditAktif = guru.nip;
+
+  document.getElementById('inputNip').value = guru.nip || '';
+  document.getElementById('inputNip').disabled = true;
+  document.getElementById('inputNamaGuru').value = guru.nama || '';
+  document.getElementById('inputMapel').value = guru.mapel || '';
+  document.getElementById('inputKelasAjar').value = guru.kelas_ajar || '';
+  document.getElementById('inputJurusanAjar').value = guru.jurusan_ajar || '';
+
+  formGuruError.textContent = '';
+  modalGuru.classList.remove('hidden');
+}
+
+function tutupModalGuru() {
+  modalGuru.classList.add('hidden');
+}
+
+document.getElementById('btnTambahGuru').addEventListener('click', bukaModalTambahGuru);
+document.getElementById('closeModalGuru').addEventListener('click', tutupModalGuru);
+document.getElementById('cancelModalGuru').addEventListener('click', tutupModalGuru);
+
+// ---- SUBMIT FORM (Tambah / Edit Guru) ----
+formGuru.addEventListener('submit', async function (e) {
+  e.preventDefault();
+
+  const payload = {
+    nip: document.getElementById('inputNip').value.trim(),
+    nama: document.getElementById('inputNamaGuru').value.trim(),
+    mapel: document.getElementById('inputMapel').value.trim(),
+    kelasAjar: document.getElementById('inputKelasAjar').value.trim(),
+    jurusanAjar: document.getElementById('inputJurusanAjar').value.trim()
+  };
+
+  formGuruError.textContent = 'Menyimpan...';
+
+  try {
+    let response;
+    if (nipEditAktif) {
+      response = await fetch('/api/guru/' + nipEditAktif, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } else {
+      response = await fetch('/api/guru', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    const result = await response.json();
+
+    if (result.success) {
+      tutupModalGuru();
+      loadDataGuru();
+    } else {
+      formGuruError.textContent = result.message;
+    }
+  } catch (err) {
+    formGuruError.textContent = 'Gagal terhubung ke server!';
+  }
+});
+
+// ---- HAPUS DATA GURU ----
+async function hapusGuru(nip) {
+  const konfirmasi = confirm('Yakin ingin menghapus data guru ini?');
+  if (!konfirmasi) return;
+
+  try {
+    const response = await fetch('/api/guru/' + nip, { method: 'DELETE' });
+    const result = await response.json();
+
+    if (result.success) {
+      loadDataGuru();
+    } else {
+      alert('Gagal menghapus: ' + result.message);
+    }
+  } catch (err) {
+    alert('Gagal terhubung ke server!');
+  }
+}
+
+// ---- MODAL PENGATURAN KOP & TTD ----
+const modalKop = document.getElementById('modalKop');
+const formKop = document.getElementById('formKop');
+const formKopError = document.getElementById('formKopError');
+
+document.getElementById('btnPengaturanKop').addEventListener('click', async function () {
+  try {
+    const response = await fetch('/api/config');
+    const result = await response.json();
+
+    if (result.success) {
+      const cfg = result.data;
+      document.getElementById('cfgKop1').value = cfg.kop_instansi_1 || '';
+      document.getElementById('cfgKop2').value = cfg.kop_instansi_2 || '';
+      document.getElementById('cfgKop3').value = cfg.kop_instansi_3 || '';
+      document.getElementById('cfgAlamat').value = cfg.kop_alamat || '';
+      document.getElementById('cfgTtdKota').value = cfg.ttd_kota || '';
+      document.getElementById('cfgTtdJabatan').value = cfg.ttd_jabatan || '';
+      document.getElementById('cfgTtdNama').value = cfg.ttd_nama || '';
+      document.getElementById('cfgTtdNip').value = cfg.ttd_nip || '';
+    }
+
+    formKopError.textContent = '';
+    modalKop.classList.remove('hidden');
+  } catch (err) {
+    alert('Gagal memuat konfigurasi!');
+  }
+});
+
+document.getElementById('closeModalKop').addEventListener('click', function () {
+  modalKop.classList.add('hidden');
+});
+document.getElementById('cancelModalKop').addEventListener('click', function () {
+  modalKop.classList.add('hidden');
+});
+
+// ---- SUBMIT FORM KONFIGURASI ----
+formKop.addEventListener('submit', async function (e) {
+  e.preventDefault();
+
+  const payload = {
+    kop_instansi_1: document.getElementById('cfgKop1').value.trim(),
+    kop_instansi_2: document.getElementById('cfgKop2').value.trim(),
+    kop_instansi_3: document.getElementById('cfgKop3').value.trim(),
+    kop_alamat: document.getElementById('cfgAlamat').value.trim(),
+    ttd_kota: document.getElementById('cfgTtdKota').value.trim(),
+    ttd_jabatan: document.getElementById('cfgTtdJabatan').value.trim(),
+    ttd_nama: document.getElementById('cfgTtdNama').value.trim(),
+    ttd_nip: document.getElementById('cfgTtdNip').value.trim()
+  };
+
+  formKopError.textContent = 'Menyimpan...';
+
+  try {
+    const response = await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json();
+
+    if (result.success) {
+      modalKop.classList.add('hidden');
+      alert('Konfigurasi berhasil disimpan! Kop surat di laporan PDF akan otomatis terupdate.');
+    } else {
+      formKopError.textContent = result.message;
+    }
+  } catch (err) {
+    formKopError.textContent = 'Gagal terhubung ke server!';
+  }
 });

@@ -5,6 +5,8 @@ from werkzeug.utils import secure_filename
 from xhtml2pdf import pisa
 from io import BytesIO
 from datetime import datetime
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill
 
 app = Flask(__name__)
 
@@ -196,6 +198,12 @@ def export_siswa_pdf():
         conn = get_db_connection()
         cursor = conn.cursor()
 
+        # Ambil konfigurasi kop & TTD dulu
+        cursor.execute("SELECT * FROM config")
+        config_rows = cursor.fetchall()
+        config = {row['key']: row['value'] for row in config_rows}
+
+        # Ambil data siswa sesuai filter
         query = "SELECT * FROM data_siswa WHERE 1=1"
         params = []
 
@@ -237,7 +245,15 @@ def export_siswa_pdf():
                 """
 
         subtitle = f"KELAS {kelas}" if kelas != 'all' else "SEMUA SISWA"
-        tanggal_cetak = datetime.now().strftime('%d-%m-%Y %H:%M')
+
+        kop1 = config.get('kop_instansi_1', 'PEMERINTAH PROVINSI')
+        kop2 = config.get('kop_instansi_2', 'DINAS PENDIDIKAN')
+        kop3 = config.get('kop_instansi_3', 'NAMA SEKOLAH')
+        kop_alamat = config.get('kop_alamat', 'Alamat Sekolah')
+        ttd_kota = config.get('ttd_kota', 'Kota')
+        ttd_jabatan = config.get('ttd_jabatan', 'Kepala Sekolah')
+        ttd_nama = config.get('ttd_nama', '..................')
+        ttd_nip = config.get('ttd_nip', '..................')
 
         html_content = f"""
         <html>
@@ -245,15 +261,26 @@ def export_siswa_pdf():
         <style>
             @page {{ size: A4 landscape; margin: 1.5cm; }}
             body {{ font-family: Helvetica, sans-serif; font-size: 10px; }}
-            h2 {{ text-align: center; margin-bottom: 2px; }}
+            .kop {{ text-align: center; border-bottom: 3px double #000; padding-bottom: 8px; margin-bottom: 15px; }}
+            .kop h3 {{ margin: 2px 0; font-size: 14px; }}
+            .kop p {{ margin: 2px 0; font-size: 10px; font-style: italic; }}
+            h2 {{ text-align: center; margin-bottom: 2px; text-decoration: underline; }}
             h4 {{ text-align: center; margin-top: 0; font-weight: normal; color: #555; }}
             table {{ width: 100%; border-collapse: collapse; margin-top: 15px; }}
             th, td {{ border: 1px solid #333; padding: 5px; text-align: left; }}
             th {{ background-color: #2b2560; color: white; }}
-            .footer {{ margin-top: 20px; font-size: 9px; color: #666; text-align: right; }}
+            .ttd {{ margin-top: 30px; width: 100%; }}
+            .ttd td {{ border: none; padding: 3px; }}
         </style>
         </head>
         <body>
+            <div class="kop">
+                <h3>{kop1}</h3>
+                <h3>{kop2}</h3>
+                <h2 style="font-size:18px; text-decoration:none;">{kop3}</h2>
+                <p>{kop_alamat}</p>
+            </div>
+
             <h2>LAPORAN DATA SISWA</h2>
             <h4>{subtitle}</h4>
             <table>
@@ -267,12 +294,23 @@ def export_siswa_pdf():
                     {rows_html}
                 </tbody>
             </table>
-            <p class="footer">Dicetak pada: {tanggal_cetak}</p>
+
+            <table class="ttd">
+                <tr>
+                    <td width="70%"></td>
+                    <td width="30%" style="text-align:center;">
+                        <p>{ttd_kota}, {datetime.now().strftime('%d-%m-%Y')}</p>
+                        <p><b>{ttd_jabatan}</b></p>
+                        <br><br><br>
+                        <p><b><u>{ttd_nama}</u></b></p>
+                        <p>NIP. {ttd_nip}</p>
+                    </td>
+                </tr>
+            </table>
         </body>
         </html>
         """
 
-        # Ubah HTML jadi PDF, simpan sementara di memori (bukan file fisik di komputer)
         pdf_buffer = BytesIO()
         pisa.CreatePDF(html_content, dest=pdf_buffer)
         pdf_buffer.seek(0)
@@ -284,11 +322,8 @@ def export_siswa_pdf():
 
     except Exception as e:
         return jsonify({"success": False, "message": str(e)})
-
+    
 # ---- API: EXPORT EXCEL DATA SISWA ----
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill
-
 @app.route('/api/export/siswa/excel', methods=['GET'])
 def export_siswa_excel():
     try:
@@ -297,6 +332,11 @@ def export_siswa_excel():
 
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        # Ambil konfigurasi kop & TTD
+        cursor.execute("SELECT * FROM config")
+        config_rows = cursor.fetchall()
+        config = {row['key']: row['value'] for row in config_rows}
 
         query = "SELECT * FROM data_siswa WHERE 1=1"
         params = []
@@ -317,13 +357,42 @@ def export_siswa_excel():
         ws.title = "Data Siswa"
 
         headers = ["No", "Nama", "NISN", "L/P", "Tgl Lahir", "Nama Ayah", "Nama Ibu", "No HP", "Kelas", "Jurusan", "Alamat", "Kode Pos"]
-        ws.append(headers)
+        jumlah_kolom = len(headers)
 
-        # Styling header (mirip logika Apps Script lama: header kuning tebal)
-        for cell in ws[1]:
+        # ---- BAGIAN KOP SURAT ----
+        ws.append([config.get('kop_instansi_1', '')])
+        ws.append([config.get('kop_instansi_2', '')])
+        ws.append([config.get('kop_instansi_3', '')])
+        ws.append([config.get('kop_alamat', '')])
+        ws.append([])  # baris kosong sebagai jarak
+
+        for row_idx in range(1, 5):
+            cell = ws.cell(row=row_idx, column=1)
+            cell.font = Font(bold=(row_idx <= 3), size=(13 if row_idx == 3 else 11))
+            ws.merge_cells(start_row=row_idx, start_column=1, end_row=row_idx, end_column=jumlah_kolom)
+            cell.alignment = cell.alignment.copy(horizontal='center')
+
+        # ---- JUDUL LAPORAN ----
+        judul_row = ws.max_row + 1
+        subtitle = f"KELAS {kelas}" if kelas != 'all' else "SEMUA SISWA"
+        ws.append(["LAPORAN DATA SISWA"])
+        ws.append([subtitle])
+        ws.append([])
+
+        for r in [judul_row, judul_row + 1]:
+            cell = ws.cell(row=r, column=1)
+            cell.font = Font(bold=(r == judul_row), size=12)
+            ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=jumlah_kolom)
+            cell.alignment = cell.alignment.copy(horizontal='center')
+
+        # ---- HEADER TABEL ----
+        header_row = ws.max_row + 1
+        ws.append(headers)
+        for cell in ws[header_row]:
             cell.font = Font(bold=True)
             cell.fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
 
+        # ---- ISI DATA ----
         for i, s in enumerate(siswa, start=1):
             tgl_lahir = s['tgl_lahir'].strftime('%d-%m-%Y') if s['tgl_lahir'] else ''
             ws.append([
@@ -332,10 +401,40 @@ def export_siswa_excel():
                 s['kelas'], s['jurusan'], s['alamat'], s['kode_pos']
             ])
 
+        # ---- BLOK TANDA TANGAN ----
+        ws.append([])
+        ws.append([])
+        ttd_kota = config.get('ttd_kota', 'Kota')
+        ttd_jabatan = config.get('ttd_jabatan', 'Kepala Sekolah')
+        ttd_nama = config.get('ttd_nama', '..................')
+        ttd_nip = config.get('ttd_nip', '..................')
+        tanggal_hari_ini = datetime.now().strftime('%d-%m-%Y')
+
+        baris_ttd = [
+            f"{ttd_kota}, {tanggal_hari_ini}",
+            ttd_jabatan,
+            "", "", "",
+            ttd_nama,
+            f"NIP. {ttd_nip}"
+        ]
+        for teks in baris_ttd:
+            r = ws.max_row + 1
+            ws.cell(row=r, column=jumlah_kolom - 2, value=teks)
+
         # Auto-lebar kolom biar rapi
-        for col in ws.columns:
-            max_length = max(len(str(cell.value)) if cell.value else 0 for cell in col)
-            ws.column_dimensions[col[0].column_letter].width = max_length + 3
+        for col_cells in ws.columns:
+            max_length = 0
+            col_letter = None
+            for cell in col_cells:
+                if cell.value and not isinstance(cell, type(ws.cell(row=1, column=1))) is False:
+                    pass
+                try:
+                    col_letter = cell.column_letter
+                    max_length = max(max_length, len(str(cell.value)) if cell.value else 0)
+                except AttributeError:
+                    continue
+            if col_letter:
+                ws.column_dimensions[col_letter].width = max_length + 3
 
         excel_buffer = BytesIO()
         wb.save(excel_buffer)
@@ -355,6 +454,12 @@ def export_guru_pdf():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        # Ambil konfigurasi kop & TTD
+        cursor.execute("SELECT * FROM config")
+        config_rows = cursor.fetchall()
+        config = {row['key']: row['value'] for row in config_rows}
+
         cursor.execute("SELECT * FROM data_guru ORDER BY nama ASC")
         guru = cursor.fetchall()
         conn.close()
@@ -375,7 +480,14 @@ def export_guru_pdf():
                 </tr>
                 """
 
-        tanggal_cetak = datetime.now().strftime('%d-%m-%Y %H:%M')
+        kop1 = config.get('kop_instansi_1', 'PEMERINTAH PROVINSI')
+        kop2 = config.get('kop_instansi_2', 'DINAS PENDIDIKAN')
+        kop3 = config.get('kop_instansi_3', 'NAMA SEKOLAH')
+        kop_alamat = config.get('kop_alamat', 'Alamat Sekolah')
+        ttd_kota = config.get('ttd_kota', 'Kota')
+        ttd_jabatan = config.get('ttd_jabatan', 'Kepala Sekolah')
+        ttd_nama = config.get('ttd_nama', '..................')
+        ttd_nip = config.get('ttd_nip', '..................')
 
         html_content = f"""
         <html>
@@ -383,15 +495,26 @@ def export_guru_pdf():
         <style>
             @page {{ size: A4 landscape; margin: 1.5cm; }}
             body {{ font-family: Helvetica, sans-serif; font-size: 11px; }}
-            h2 {{ text-align: center; margin-bottom: 2px; }}
+            .kop {{ text-align: center; border-bottom: 3px double #000; padding-bottom: 8px; margin-bottom: 15px; }}
+            .kop h3 {{ margin: 2px 0; font-size: 14px; }}
+            .kop p {{ margin: 2px 0; font-size: 10px; font-style: italic; }}
+            h2 {{ text-align: center; margin-bottom: 2px; text-decoration: underline; }}
             h4 {{ text-align: center; margin-top: 0; font-weight: normal; color: #555; }}
             table {{ width: 100%; border-collapse: collapse; margin-top: 15px; }}
             th, td {{ border: 1px solid #333; padding: 6px; text-align: left; }}
             th {{ background-color: #2b2560; color: white; }}
-            .footer {{ margin-top: 20px; font-size: 9px; color: #666; text-align: right; }}
+            .ttd {{ margin-top: 30px; width: 100%; }}
+            .ttd td {{ border: none; padding: 3px; }}
         </style>
         </head>
         <body>
+            <div class="kop">
+                <h3>{kop1}</h3>
+                <h3>{kop2}</h3>
+                <h2 style="font-size:18px; text-decoration:none;">{kop3}</h2>
+                <p>{kop_alamat}</p>
+            </div>
+
             <h2>LAPORAN DATA GURU</h2>
             <h4>DATA PENGAJAR AKTIF</h4>
             <table>
@@ -400,7 +523,19 @@ def export_guru_pdf():
                 </thead>
                 <tbody>{rows_html}</tbody>
             </table>
-            <p class="footer">Dicetak pada: {tanggal_cetak}</p>
+
+            <table class="ttd">
+                <tr>
+                    <td width="70%"></td>
+                    <td width="30%" style="text-align:center;">
+                        <p>{ttd_kota}, {datetime.now().strftime('%d-%m-%Y')}</p>
+                        <p><b>{ttd_jabatan}</b></p>
+                        <br><br><br>
+                        <p><b><u>{ttd_nama}</u></b></p>
+                        <p>NIP. {ttd_nip}</p>
+                    </td>
+                </tr>
+            </table>
         </body>
         </html>
         """
@@ -417,13 +552,17 @@ def export_guru_pdf():
     except Exception as e:
         return jsonify({"success": False, "message": str(e)})
 
-
 # ---- API: EXPORT EXCEL DATA GURU ----
 @app.route('/api/export/guru/excel', methods=['GET'])
 def export_guru_excel():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        cursor.execute("SELECT * FROM config")
+        config_rows = cursor.fetchall()
+        config = {row['key']: row['value'] for row in config_rows}
+
         cursor.execute("SELECT * FROM data_guru ORDER BY nama ASC")
         guru = cursor.fetchall()
         conn.close()
@@ -433,18 +572,75 @@ def export_guru_excel():
         ws.title = "Data Guru"
 
         headers = ["No", "NIP", "Nama Guru", "Mata Pelajaran", "Kelas Ajar", "Jurusan Ajar"]
-        ws.append(headers)
+        jumlah_kolom = len(headers)
 
-        for cell in ws[1]:
+        # ---- BAGIAN KOP SURAT ----
+        ws.append([config.get('kop_instansi_1', '')])
+        ws.append([config.get('kop_instansi_2', '')])
+        ws.append([config.get('kop_instansi_3', '')])
+        ws.append([config.get('kop_alamat', '')])
+        ws.append([])
+
+        for row_idx in range(1, 5):
+            cell = ws.cell(row=row_idx, column=1)
+            cell.font = Font(bold=(row_idx <= 3), size=(13 if row_idx == 3 else 11))
+            ws.merge_cells(start_row=row_idx, start_column=1, end_row=row_idx, end_column=jumlah_kolom)
+            cell.alignment = cell.alignment.copy(horizontal='center')
+
+        # ---- JUDUL LAPORAN ----
+        judul_row = ws.max_row + 1
+        ws.append(["LAPORAN DATA GURU"])
+        ws.append(["DATA PENGAJAR AKTIF"])
+        ws.append([])
+
+        for r in [judul_row, judul_row + 1]:
+            cell = ws.cell(row=r, column=1)
+            cell.font = Font(bold=(r == judul_row), size=12)
+            ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=jumlah_kolom)
+            cell.alignment = cell.alignment.copy(horizontal='center')
+
+        # ---- HEADER TABEL ----
+        header_row = ws.max_row + 1
+        ws.append(headers)
+        for cell in ws[header_row]:
             cell.font = Font(bold=True)
             cell.fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
 
+        # ---- ISI DATA ----
         for i, g in enumerate(guru, start=1):
             ws.append([i, g['nip'], g['nama'], g['mapel'], g['kelas_ajar'], g['jurusan_ajar']])
 
-        for col in ws.columns:
-            max_length = max(len(str(cell.value)) if cell.value else 0 for cell in col)
-            ws.column_dimensions[col[0].column_letter].width = max_length + 3
+        # ---- BLOK TANDA TANGAN ----
+        ws.append([])
+        ws.append([])
+        ttd_kota = config.get('ttd_kota', 'Kota')
+        ttd_jabatan = config.get('ttd_jabatan', 'Kepala Sekolah')
+        ttd_nama = config.get('ttd_nama', '..................')
+        ttd_nip = config.get('ttd_nip', '..................')
+        tanggal_hari_ini = datetime.now().strftime('%d-%m-%Y')
+
+        baris_ttd = [
+            f"{ttd_kota}, {tanggal_hari_ini}",
+            ttd_jabatan,
+            "", "", "",
+            ttd_nama,
+            f"NIP. {ttd_nip}"
+        ]
+        for teks in baris_ttd:
+            r = ws.max_row + 1
+            ws.cell(row=r, column=jumlah_kolom - 2, value=teks)
+
+        for col_cells in ws.columns:
+            max_length = 0
+            col_letter = None
+            for cell in col_cells:
+                try:
+                    col_letter = cell.column_letter
+                    max_length = max(max_length, len(str(cell.value)) if cell.value else 0)
+                except AttributeError:
+                    continue
+            if col_letter:
+                ws.column_dimensions[col_letter].width = max_length + 3
 
         excel_buffer = BytesIO()
         wb.save(excel_buffer)
@@ -470,6 +666,124 @@ def get_guru():
         return jsonify({"success": True, "data": guru})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)})
-                        
+
+# ---- API: TAMBAH GURU BARU ----
+@app.route('/api/guru', methods=['POST'])
+def add_guru():
+    data = request.get_json()
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT id FROM data_guru WHERE nip = %s", (data.get('nip'),))
+        if cursor.fetchone():
+            conn.close()
+            return jsonify({"success": False, "message": "NIP Guru sudah terdaftar!"})
+
+        cursor.execute("""
+            INSERT INTO data_guru (nip, nama, mapel, kelas_ajar, jurusan_ajar)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
+            data.get('nip'), data.get('nama'), data.get('mapel'),
+            data.get('kelasAjar'), data.get('jurusanAjar')
+        ))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"success": True, "message": "Data Guru berhasil disimpan!"})
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
+
+# ---- API: EDIT DATA GURU ----
+@app.route('/api/guru/<nip>', methods=['PUT'])
+def update_guru(nip):
+    data = request.get_json()
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE data_guru SET nama = %s, mapel = %s, kelas_ajar = %s, jurusan_ajar = %s
+            WHERE nip = %s
+        """, (
+            data.get('nama'), data.get('mapel'),
+            data.get('kelasAjar'), data.get('jurusanAjar'), nip
+        ))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"success": True, "message": "Data Guru berhasil diperbarui!"})
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
+
+# ---- API: HAPUS DATA GURU ----
+@app.route('/api/guru/<nip>', methods=['DELETE'])
+def delete_guru(nip):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("DELETE FROM data_guru WHERE nip = %s", (nip,))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"success": True, "message": "Data Guru berhasil dihapus!"})
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
+# ---- API: AMBIL KONFIGURASI KOP & TTD ----
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM config")
+        rows = cursor.fetchall()
+        conn.close()
+
+        # Ubah dari format [{key: 'x', value: 'y'}, ...] jadi {x: 'y', ...} biar gampang dipakai
+        config_map = {row['key']: row['value'] for row in rows}
+
+        return jsonify({"success": True, "data": config_map})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
+
+# ---- API: SIMPAN KONFIGURASI KOP & TTD ----
+@app.route('/api/config', methods=['POST'])
+def save_config():
+    data = request.get_json()
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        keys_to_save = [
+            'kop_instansi_1', 'kop_instansi_2', 'kop_instansi_3', 'kop_alamat',
+            'ttd_kota', 'ttd_jabatan', 'ttd_nama', 'ttd_nip'
+        ]
+
+        for key in keys_to_save:
+            value = data.get(key, '')
+            cursor.execute("""
+                INSERT INTO config (`key`, value) VALUES (%s, %s)
+                ON DUPLICATE KEY UPDATE value = %s
+            """, (key, value, value))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({"success": True, "message": "Konfigurasi berhasil diperbarui!"})
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+                            
 if __name__ == '__main__':
     app.run(debug=True, port=5000, use_reloader=False)

@@ -379,7 +379,109 @@
       </div>
     </div>
   </div>
-  
+
+<!-- ============ MODAL TAMBAH/EDIT GURU ============ -->
+  <div id="modalGuru" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modalGuruTitle">Tambah Guru Baru</h3>
+        <button class="modal-close" id="closeModalGuru">&times;</button>
+      </div>
+
+      <form id="formGuru">
+        <div class="form-grid">
+          <div class="form-field">
+            <label>NIP</label>
+            <input type="text" id="inputNip" required>
+          </div>
+          <div class="form-field">
+            <label>Nama Guru</label>
+            <input type="text" id="inputNamaGuru" required>
+          </div>
+          <div class="form-field">
+            <label>Mata Pelajaran</label>
+            <input type="text" id="inputMapel">
+          </div>
+          <div class="form-field">
+            <label>Kelas Ajar</label>
+            <input type="text" id="inputKelasAjar" placeholder="Contoh: XII">
+          </div>
+          <div class="form-field full-width">
+            <label>Jurusan Ajar</label>
+            <input type="text" id="inputJurusanAjar" placeholder="Contoh: IPA 1">
+          </div>
+        </div>
+
+        <p id="formGuruError" class="login-error"></p>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-outline" id="cancelModalGuru">Batal</button>
+          <button type="submit" class="btn-primary">Simpan Data</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+
+  <!-- ============ MODAL PENGATURAN KOP & TTD ============ -->
+  <div id="modalKop" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Pengaturan Kop & TTD</h3>
+        <button class="modal-close" id="closeModalKop">&times;</button>
+      </div>
+
+      <form id="formKop">
+        <div class="form-grid">
+          <div class="form-field full-width">
+            <label>Baris 1 Kop (Contoh: PEMERINTAH PROVINSI ...)</label>
+            <input type="text" id="cfgKop1">
+          </div>
+          <div class="form-field full-width">
+            <label>Baris 2 Kop (Contoh: DINAS PENDIDIKAN ...)</label>
+            <input type="text" id="cfgKop2">
+          </div>
+          <div class="form-field full-width">
+            <label>Baris 3 Kop / Nama Sekolah</label>
+            <input type="text" id="cfgKop3">
+          </div>
+          <div class="form-field full-width">
+            <label>Alamat Sekolah</label>
+            <input type="text" id="cfgAlamat">
+          </div>
+          <div class="form-field">
+            <label>Kota (untuk TTD)</label>
+            <input type="text" id="cfgTtdKota">
+          </div>
+          <div class="form-field">
+            <label>Jabatan Penandatangan</label>
+            <input type="text" id="cfgTtdJabatan">
+          </div>
+          <div class="form-field">
+            <label>Nama Penandatangan</label>
+            <input type="text" id="cfgTtdNama">
+          </div>
+          <div class="form-field">
+            <label>NIP Penandatangan</label>
+            <input type="text" id="cfgTtdNip">
+          </div>
+        </div>
+
+        <p id="formKopError" class="login-error"></p>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-outline" id="cancelModalKop">Batal</button>
+          <button type="submit" class="btn-primary">Simpan Konfigurasi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
+
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>
